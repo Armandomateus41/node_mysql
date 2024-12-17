@@ -1,15 +1,19 @@
-const  Sequelize  = require("sequelize")
+const Sequelize = require("sequelize");
 
-const sequelize = new Sequelize("armando", "root", "123456",{
-    host: "localhost",
-    dialect: "mysql"
-})
+// Configura a conexão com o banco de dados MySQL
+const db = new Sequelize("armando", "root", "123456", {
+  host: "localhost",
+  dialect: "mysql",
+  logging: false, // Desativa os logs SQL no terminal
+});
 
-sequelize.authenticate() // testando a conexão
-.then(function() {
-    console.log("Conexão com o banco realizada com sucesso!")
-}).catch(function() {
-    console.log("Errro Não foi possível realizar a conexão com o banco.")
-})
+// Testa a conexão com o banco
+db.authenticate()
+  .then(() => {
+    console.log("Conexão com o banco realizada com sucesso!");
+  })
+  .catch((error) => {
+    console.error("Erro ao conectar no banco:", error.message);
+  });
 
-module.exports = sequelize;
+module.exports = db;

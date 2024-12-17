@@ -1,71 +1,158 @@
 const express = require("express");
+const usuario = require("./models/usuario"); // Importa o modelo Sequelize 'usuario'
 
- const db = require("./models/db"); // Importa o arquivo db.js
-
-// Configura a porta do Express
 const app = express();
+app.use(express.json()); // Habilita o body-parser para JSON
 
-app.use(express.json()); // habilita o body-parser para interpretar JSON
+// ================== ROTAS ================== //
 
-// Configura a porta do Express
-// usuario
-app.get("/usuarios", (req, res) => {
-  return res.json({
-    erro: false,
-    nome: "Armando",
-    email: "armando@example.com",
-    telefone: "(11) 9999-9999",
-  });
-});
-
-// Busca um usuário pelo ID
-app.get("/usuario/:id", (req, res) => {
-  const { id } = req.params.id;
-  return res.json({
-    erro: false,
-    id,
-    nome: "Armando",
-    email: "armando@example.com",
-    telefone: "(11) 9999-9999",
-  });
-});
-
-// tipo de requisição POST para adicionar um novo usuário
-app.post("/usuario", (req, res) => {
-  const { nome, email } = req.body; // Assumindo que o body tem nome
-  return res.json({
-    erro: false,
-    nome,
-    email,
-    telefone: "(11) 9999-9999",
-  });
-});
-
-// tipo de requisição PUT para atualizar um usuário e editar um campo específico
-
-app.put("/usuario", (req, res) => {
-  const { id, nome, email, telefone } = req.body; // Assumindo que o body tem nome e id
-  return res.json({
-    erro: false,
-    id,
-    nome,
-    email,
-    telefone: "(11) 9999-9999",
-    
-  });
-});
-
-// tipo de requisição DELETE para remover um usuário
-app.delete("/usuario/:id", (req, res) => {
-    const { id } = req.params; // Assumindo que o body tem nome e id
+// Rota para buscar todos os usuários
+app.get("/user", async (req, res) => {
+  try {
+    const users = await usuario.findAll({ order: [["id", "DESC"]] });
     return res.json({
       erro: false,
-      id,
-
-      
+      users,
     });
-  });
-  
-app.listen(8080, () => {
-  console.log("API rodando na porta 8080"); // Loga a mensagem na console quando a API estiver rodando
+  } catch (error) {
+    console.error("Erro ao buscar usuários:", error.message);
+    return res.status(500).json({
+      erro: true,
+      mensagem: "Erro ao buscar os usuários!",
+    });
+  }
+});
+
+// Rota para buscar um usuário pelo ID
+app.get("/user/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await usuario.findByPk(id);
+    if (!user) {
+      return res.status(404).json({
+        erro: true,
+        mensagem: "Usuário não encontrado!",
+      });
+    }
+    return res.json({
+      erro: false,
+      user,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar usuário:", error.message);
+    return res.status(500).json({
+      erro: true,
+      mensagem: "Erro ao buscar o usuário!",
+    });
+  }
+});
+
+// Rota para criar um novo usuário
+app.post("/user", async (req, res) => {
+  try {
+    const { nome, email } = req.body;
+
+    // Validação de campos obrigatórios
+    if (!nome || !email) {
+      return res.status(400).json({
+        erro: true,
+        mensagem: "Os campos 'nome' e 'email' são obrigatórios!",
+      });
+    }
+
+    // Verifica se o email já existe
+    const userExists = await usuario.findOne({ where: { email } });
+    if (userExists) {
+      return res.status(400).json({
+        erro: true,
+        mensagem: "Email já cadastrado!",
+      });
+    }
+
+    // Cria o usuário no banco
+    const user = await usuario.create({ nome, email });
+
+    return res.json({
+      erro: false,
+      mensagem: "Usuário criado com sucesso!",
+      user,
+    });
+  } catch (error) {
+    console.error("Erro ao criar usuário:", error.message);
+
+    // Tratamento específico para email duplicado
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({
+        erro: true,
+        mensagem: "Email já está em uso!",
+      });
+    }
+
+    return res.status(500).json({
+      erro: true,
+      mensagem: "Erro interno ao tentar criar o usuário!",
+    });
+  }
+});
+
+// Rota para atualizar informações de um usuário
+app.put("/user/:id", async (req, res) => {
+  const { id } = req.params;
+  const { nome, email } = req.body;
+
+  try {
+    const user = await usuario.findByPk(id);
+    if (!user) {
+      return res.status(404).json({
+        erro: true,
+        mensagem: "Usuário não encontrado!",
+      });
+    }
+
+    await user.update({ nome, email }); // Atualiza os dados do usuário
+
+    return res.json({
+      erro: false,
+      mensagem: "Usuário atualizado com sucesso!",
+      user,
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar usuário:", error.message);
+    return res.status(500).json({
+      erro: true,
+      mensagem: "Erro ao tentar atualizar o usuário!",
+    });
+  }
+});
+
+// Rota para excluir um usuário pelo ID
+app.delete("/user/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await usuario.findByPk(id);
+    if (!user) {
+      return res.status(404).json({
+        erro: true,
+        mensagem: "Usuário não encontrado!",
+      });
+    }
+
+    await user.destroy(); // Remove o usuário do banco
+    return res.json({
+      erro: false,
+      mensagem: `Usuário com ID ${id} foi removido com sucesso!`,
+    });
+  } catch (error) {
+    console.error("Erro ao remover usuário:", error.message);
+    return res.status(500).json({
+      erro: true,
+      mensagem: "Erro ao tentar remover o usuário!",
+    });
+  }
+});
+
+// ================== INICIALIZAÇÃO DO SERVIDOR ================== //
+app.listen(8080, async () => {
+  console.log("API rodando na porta 8080");
 });
